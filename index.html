@@ -87,14 +87,13 @@
            : "⚠️ Mã đã từng được xác minh trước đó.";
          resultEl.className = isFirstScan ? "status ok" : "status warn";
 
-        
-        infoEl.innerHTML = `
-            <p>Tên sản phẩm: <b>${item.Product_name || "Không rõ"}</b></p>
-            <p>Số lô: <b>${item.lot_no || "Không rõ"}</b></p>
-            <p>Số lần quét: <b>${scanCount}</b></p>
-            <p>Lần quét đầu tiên: <b>${item.scanned_at ? new Date(item.scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
-            <p>Lần quét gần nhất: <b>${item.last_scanned_at ? new Date(item.last_scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
-        `;
+         infoEl.innerHTML = `
+           <p>Tên sản phẩm: <b>${item.Product_name || "Không rõ"}</b></p>
+           <p>Số lô: <b>${item.lot_no || "Không rõ"}</b></p>
+           <p>Số lần quét: <b>${scanCount}</b></p>
+           <p>Lần quét đầu tiên: <b>${item.scanned_at ? new Date(item.scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
+           <p>Lần quét gần nhất: <b>${item.last_scanned_at ? new Date(item.last_scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
+         `;
       })
       .catch(() => {
         resultEl.innerHTML = "⚠️ Lỗi kết nối: không thể truy cập hệ thống.";
@@ -105,4 +104,3 @@
 
 </body>
 </html>
-
