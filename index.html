@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Xác Thực Sản Phẩm Chính Hãng</title>
   <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-  <style>    
+  <style>
     body { font-family: Arial, sans-serif; background-color: #f6f6f6; padding: 20px; text-align: center; margin: 0; }
     .qr-box { background: white; max-width: 500px; margin: 50px auto; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
     .status { font-size: 20px; margin: 20px 0; font-weight: bold; }
@@ -13,6 +13,7 @@
     .warn { color: orange; }
     .fail { color: red; }
     small { color: #666; }
+    #info p { margin: 8px 0; text-align: left; }
     .g-recaptcha { display: none; }
   </style>
 </head>
@@ -27,7 +28,8 @@
 
   <form id="recaptcha-form" action="#">
     <button class="g-recaptcha"
-            data-sitekey="6Lcxq5wrAAAAAIttEdELGqn0J4b1DrKRu_YynLHw" data-callback="onReCaptchaSuccess"
+            data-sitekey="6Lcxq5wrAAAAAIttEdELGqn0J4b1DrKRu_YynLHw"
+            data-callback="onReCaptchaSuccess"
             data-size="invisible">
     </button>
   </form>
@@ -58,8 +60,7 @@
         return;
       }
 
-      // URL của Edge Function MỚI
-      fetch("https://uviqesqguuekioeqoxpj.supabase.co/functions/v1/verify-auth", { // 👈 THAY TÊN FUNCTION MỚI Ở ĐÂY
+      fetch("https://uviqesqguuekioeqoxpj.supabase.co/functions/v1/verify-auth", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -78,18 +79,21 @@
          }
 
          const item = data.data;
-         const scanCount = (item.scan || 0) + 1;
+         const scanCount = item.scan;
+         const isFirstScan = !item.scanned_at || (scanCount === 1);
 
-         resultEl.innerHTML = (scanCount === 1)
+         resultEl.innerHTML = isFirstScan
            ? "✅ Sản phẩm chính hãng. Tem được quét lần đầu."
            : "⚠️ Mã đã từng được xác minh trước đó.";
-         resultEl.className = (scanCount === 1) ? "status ok" : "status warn";
+         resultEl.className = isFirstScan ? "status ok" : "status warn";
 
+         // CẬP NHẬT PHẦN HIỂN THỊ KẾT QUẢ
          infoEl.innerHTML = `
            <p>Tên sản phẩm: <b>${item.Product_name || "Không rõ"}</b></p>
            <p>Số lô: <b>${item.lot_no || "Không rõ"}</b></p>
-           <p>Ngày xác thực gần nhất: <b>${new Date().toLocaleDateString("vi-VN")}</b></p>
            <p>Số lần quét: <b>${scanCount}</b></p>
+           <p>Lần quét đầu tiên: <b>${item.scanned_at ? new Date(item.scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
+           <p>Lần quét gần nhất: <b>${item.last_scanned_at ? new Date(item.last_scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
          `;
       })
       .catch(() => {
@@ -101,4 +105,3 @@
 
 </body>
 </html>
-
