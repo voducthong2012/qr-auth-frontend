@@ -40,6 +40,14 @@
     const resultEl = document.getElementById("result");
     const infoEl = document.getElementById("info");
 
+    // ✅ HÀM MỚI: Chuyển đổi và định dạng giờ Việt Nam
+    function formatToVietnamTime(utcDateString) {
+      if (!utcDateString) return 'Vừa xong';
+      const date = new Date(utcDateString);
+      // Sử dụng toLocaleString với múi giờ Asia/Ho_Chi_Minh
+      return date.toLocaleString("vi-VN", { timeZone: "Asia/Ho_Chi_Minh" });
+    }
+
     window.onload = () => {
       if (!code) {
         resultEl.innerHTML = "❌ Không tìm thấy mã QR trong liên kết.";
@@ -87,12 +95,13 @@
            : "⚠️ Mã đã từng được xác minh trước đó.";
          resultEl.className = isFirstScan ? "status ok" : "status warn";
 
+         // ✅ SỬ DỤNG HÀM MỚI ĐỂ HIỂN THỊ THỜI GIAN
          infoEl.innerHTML = `
            <p>Tên sản phẩm: <b>${item.Product_name || "Không rõ"}</b></p>
            <p>Số lô: <b>${item.lot_no || "Không rõ"}</b></p>
            <p>Số lần quét: <b>${scanCount}</b></p>
-           <p>Lần quét đầu tiên: <b>${item.scanned_at ? new Date(item.scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
-           <p>Lần quét gần nhất: <b>${item.last_scanned_at ? new Date(item.last_scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
+           <p>Lần quét đầu tiên: <b>${formatToVietnamTime(item.scanned_at)}</b></p>
+           <p>Lần quét gần nhất: <b>${formatToVietnamTime(item.last_scanned_at)}</b></p>
          `;
       })
       .catch(() => {
