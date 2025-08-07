@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Xác Thực Sản Phẩm Chính Hãng</title>
-  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
   <style>
     body { font-family: Arial, sans-serif; background-color: #f6f6f6; padding: 20px; text-align: center; margin: 0; }
     .qr-box { background: white; max-width: 500px; margin: 50px auto; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
@@ -18,7 +17,6 @@
   </style>
 </head>
 <body>
-
   <div class="qr-box">
     <h2>🔍 Kiểm tra tem chống giả</h2>
     <div id="result" class="status">Đang kiểm tra mã...</div>
@@ -34,103 +32,79 @@
     </button>
   </form>
 
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
   <script>
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const resultEl = document.getElementById("result");
-    const infoEl = document.getElementById("info");
+    document.addEventListener("DOMContentLoaded", function() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const resultEl = document.getElementById("result");
+      const infoEl = document.getElementById("info");
 
-    // Hàm cộng 7 tiếng thủ công để debug
-    function formatToVietnamTimeManual(utcDateString) {
-      if (!utcDateString) return null;
-      const date = new Date(new Date(utcDateString).getTime() + 7 * 60 * 60 * 1000);
-      const day = String(date.getUTCDate()).padStart(2, '0');
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-      const year = date.getUTCFullYear();
-      const hours = String(date.getUTCHours()).padStart(2, '0');
-      const minutes = String(date.getUTCMinutes()).padStart(2, '0');
-      const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-      return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
-    }
-
-    window.onload = () => {
       if (!code) {
         resultEl.innerHTML = "❌ Không tìm thấy mã QR trong liên kết.";
         resultEl.className = "status fail";
-      } else {
-        if (typeof grecaptcha !== 'undefined') {
-            grecaptcha.ready(() => {
-                document.querySelector(".g-recaptcha").click();
-            });
+        return; // Dừng thực thi nếu không có code
+      }
+
+      // Chỉ kích hoạt reCAPTCHA sau khi mọi thứ đã sẵn sàng
+      grecaptcha.ready(() => {
+        grecaptcha.execute("6Lcxq5wrAAAAAIttEdELGqn0J4b1DrKRu_YynLHw", { action: "verify" })
+          .then(token => {
+            if (!token) {
+              resultEl.innerHTML = "❌ Lỗi xác thực reCAPTCHA.";
+              resultEl.className = "status fail";
+              return;
+            }
+            // Gọi hàm xử lý chính
+            verifyCodeWithServer(token, code, resultEl, infoEl);
+          });
+      });
+    });
+
+    async function verifyCodeWithServer(token, code, resultEl, infoEl) {
+      try {
+        const response = await fetch("https://uviqesqguuekioeqoxpj.supabase.co/functions/v1/verify-auth", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            qrcode: code,
+            location: "auth.quetmaqr.com",
+            user_agent: navigator.userAgent,
+            recaptcha_token: token
+          })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          resultEl.innerHTML = `⚠️ Lỗi: ${data.error || "Không rõ nguyên nhân."}`;
+          resultEl.className = "status fail";
+          return;
         }
-      }
-    };
 
-    function onReCaptchaSuccess(token) {
-      if (!token) {
-        resultEl.innerHTML = "❌ Lỗi xác thực reCAPTCHA.";
-        resultEl.className = "status fail";
-        return;
-      }
+        const item = data.data;
+        const scanCount = item.scan;
+        const isFirstScan = !item.scanned_at || (scanCount === 1);
 
-      fetch("https://uviqesqguuekioeqoxpj.supabase.co/functions/v1/verify-auth", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          qrcode: code,
-          location: "auth.quetmaqr.com",
-          user_agent: navigator.userAgent,
-          recaptcha_token: token
-        })
-      })
-      .then(async res => {
-         const data = await res.json();
-         if (!res.ok) {
-           resultEl.innerHTML = `⚠️ Lỗi: ${data.error || "Không rõ nguyên nhân."}`;
-           resultEl.className = "status fail";
-           return;
-         }
+        resultEl.innerHTML = isFirstScan
+          ? "✅ Sản phẩm chính hãng. Tem được quét lần đầu."
+          : "⚠️ Mã đã từng được xác minh trước đó.";
+        resultEl.className = isFirstScan ? "status ok" : "status warn";
 
-         const item = data.data;
-
-         // ========== PHẦN DEBUG QUAN TRỌNG ==========
-         console.log("--- BẮT ĐẦU DEBUG THỜI GIAN ---");
-         console.log("1. Dữ liệu gốc từ backend:", item);
-         console.log("2. Chuỗi UTC gốc (last_scanned_at):", item.last_scanned_at);
-         
-         const dateObject = new Date(item.last_scanned_at);
-         console.log("3. Đối tượng Date được tạo từ chuỗi UTC:", dateObject);
-         
-         console.log("4. Kết quả của toLocaleString('vi-VN'):", dateObject.toLocaleString("vi-VN"));
-         
-         console.log("5. Kết quả của hàm cộng 7 tiếng thủ công:", formatToVietnamTimeManual(item.last_scanned_at));
-         console.log("--- KẾT THÚC DEBUG ---");
-         // ===========================================
-
-         const scanCount = item.scan;
-         const isFirstScan = !item.scanned_at || (scanCount === 1);
-
-         resultEl.innerHTML = isFirstScan
-           ? "✅ Sản phẩm chính hãng. Tem được quét lần đầu."
-           : "⚠️ Mã đã từng được xác minh trước đó.";
-         resultEl.className = isFirstScan ? "status ok" : "status warn";
-
-         infoEl.innerHTML = `
+        infoEl.innerHTML = `
            <p>Tên sản phẩm: <b>${item.Product_name || "Không rõ"}</b></p>
            <p>Số lô: <b>${item.lot_no || "Không rõ"}</b></p>
            <p>Số lần quét: <b>${scanCount}</b></p>
            <p>Lần quét đầu tiên: <b>${item.scanned_at ? new Date(item.scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
            <p>Lần quét gần nhất: <b>${item.last_scanned_at ? new Date(item.last_scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
          `;
-      })
-      .catch((err) => {
-        console.error("Fetch Error:", err);
+
+      } catch (error) {
         resultEl.innerHTML = "⚠️ Lỗi kết nối: không thể truy cập hệ thống.";
         resultEl.className = "status fail";
-      });
+      }
     }
   </script>
 
 </body>
 </html>
-
