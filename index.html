@@ -95,7 +95,8 @@
            <p>Lần quét gần nhất: <b>${item.last_scanned_at ? new Date(item.last_scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
          `;
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Fetch Error:", err);
         resultEl.innerHTML = "⚠️ Lỗi kết nối: không thể truy cập hệ thống.";
         resultEl.className = "status fail";
       });
