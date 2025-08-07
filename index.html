@@ -40,20 +40,16 @@
     const resultEl = document.getElementById("result");
     const infoEl = document.getElementById("info");
 
-    // HÀM MỚI: Cộng 7 tiếng và định dạng giờ Việt Nam
-    function formatToVietnamTime(utcDateString) {
-      if (!utcDateString) return 'Vừa xong';
-      // Tạo ngày từ chuỗi UTC và cộng thêm 7 giờ
+    // Hàm cộng 7 tiếng thủ công để debug
+    function formatToVietnamTimeManual(utcDateString) {
+      if (!utcDateString) return null;
       const date = new Date(new Date(utcDateString).getTime() + 7 * 60 * 60 * 1000);
-      
-      // Lấy các thành phần ngày/giờ từ ngày đã được điều chỉnh
       const day = String(date.getUTCDate()).padStart(2, '0');
-      const month = String(date.getUTCMonth() + 1).padStart(2, '0'); // Tháng bắt đầu từ 0
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
       const year = date.getUTCFullYear();
       const hours = String(date.getUTCHours()).padStart(2, '0');
       const minutes = String(date.getUTCMinutes()).padStart(2, '0');
       const seconds = String(date.getUTCSeconds()).padStart(2, '0');
-      
       return `${hours}:${minutes}:${seconds} ${day}/${month}/${year}`;
     }
 
@@ -96,6 +92,21 @@
          }
 
          const item = data.data;
+
+         // ========== PHẦN DEBUG QUAN TRỌNG ==========
+         console.log("--- BẮT ĐẦU DEBUG THỜI GIAN ---");
+         console.log("1. Dữ liệu gốc từ backend:", item);
+         console.log("2. Chuỗi UTC gốc (last_scanned_at):", item.last_scanned_at);
+         
+         const dateObject = new Date(item.last_scanned_at);
+         console.log("3. Đối tượng Date được tạo từ chuỗi UTC:", dateObject);
+         
+         console.log("4. Kết quả của toLocaleString('vi-VN'):", dateObject.toLocaleString("vi-VN"));
+         
+         console.log("5. Kết quả của hàm cộng 7 tiếng thủ công:", formatToVietnamTimeManual(item.last_scanned_at));
+         console.log("--- KẾT THÚC DEBUG ---");
+         // ===========================================
+
          const scanCount = item.scan;
          const isFirstScan = !item.scanned_at || (scanCount === 1);
 
@@ -108,11 +119,12 @@
            <p>Tên sản phẩm: <b>${item.Product_name || "Không rõ"}</b></p>
            <p>Số lô: <b>${item.lot_no || "Không rõ"}</b></p>
            <p>Số lần quét: <b>${scanCount}</b></p>
-           <p>Lần quét đầu tiên: <b>${formatToVietnamTime(item.scanned_at)}</b></p>
-           <p>Lần quét gần nhất: <b>${formatToVietnamTime(item.last_scanned_at)}</b></p>
+           <p>Lần quét đầu tiên: <b>${item.scanned_at ? new Date(item.scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
+           <p>Lần quét gần nhất: <b>${item.last_scanned_at ? new Date(item.last_scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
          `;
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error("Fetch Error:", err);
         resultEl.innerHTML = "⚠️ Lỗi kết nối: không thể truy cập hệ thống.";
         resultEl.className = "status fail";
       });
@@ -121,3 +133,4 @@
 
 </body>
 </html>
+
