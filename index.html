@@ -1,106 +1,110 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Xác Thực Sản Phẩm Chính Hãng</title>
-    <script src="https://www.google.com/recaptcha/api.js" async defer></script>
-    <style>
-        body { font-family: Arial, sans-serif; background-color: #f6f6f6; padding: 20px; text-align: center; margin: 0; }
-        .qr-box { background: white; max-width: 500px; margin: 50px auto; padding: 30px; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-        .status { font-size: 20px; margin: 20px 0; font-weight: bold; }
-        .ok { color: green; }
-        .warn { color: orange; }
-        .fail { color: red; }
-        small { color: #666; }
-        #info p { margin: 8px 0; text-align: left; }
-        .g-recaptcha { display: none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xác Thực Sản Phẩm Chính Hãng</title>
+  <style>
+    /* ... (Giữ nguyên CSS của bạn) ... */
+  </style>
 </head>
 <body>
+  <div class="qr-box">
+    <h2>🔍 Kiểm tra tem chống giả</h2>
+    <div id="result" class="status">Đang kiểm tra mã...</div>
+    <div id="info"></div>
+    <small>Hệ thống xác thực tại <b>auth.quetmaqr.com</b></small>
+  </div>
 
-    <div class="qr-box">
-        <h2>🔍 Kiểm tra tem chống giả</h2>
-        <div id="result" class="status">Đang kiểm tra mã...</div>
-        <div id="info"></div>
-        <small>Hệ thống xác thực tại <b>auth.quetmaqr.com</b></small>
-    </div>
+  <form id="recaptcha-form" action="#">
+    <button class="g-recaptcha"
+            data-sitekey="6Lcxq5wrAAAAAIttEdELGqn0J4b1DrKRu_YynLHw"
+            data-callback="onReCaptchaSuccess"
+            data-size="invisible">
+    </button>
+  </form>
 
-    <form id="recaptcha-form" action="#">
-        <button class="g-recaptcha"
-                data-sitekey="6Lcxq5wrAAAAAIttEdELGqn0J4b1DrKRu_YynLHw"
-                data-callback="onReCaptchaSuccess"
-                data-size="invisible">
-        </button>
-    </form>
+  <script src="https://www.google.com/recaptcha/api.js" async defer></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const code = params.get("code");
+    const resultEl = document.getElementById("result");
+    const infoEl = document.getElementById("info");
 
-    <script>
-        const params = new URLSearchParams(window.location.search);
-        const code = params.get("code");
-        const resultEl = document.getElementById("result");
-        const infoEl = document.getElementById("info");
+    function formatToVietnamTime(utcDateString) {
+      if (!utcDateString) return 'Vừa xong';
+      const date = new Date(utcDateString);
+      const options = {
+        year: 'numeric', month: 'numeric', day: 'numeric',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+        hour12: false,
+        timeZone: 'Asia/Ho_Chi_Minh'
+      };
+      return new Intl.DateTimeFormat('vi-VN', options).format(date);
+    }
 
-        window.onload = () => {
-            if (!code) {
-                resultEl.innerHTML = "❌ Không tìm thấy mã QR trong liên kết.";
-                resultEl.className = "status fail";
-            } else {
-                if (typeof grecaptcha !== 'undefined') {
-                    grecaptcha.ready(() => {
-                        document.querySelector(".g-recaptcha").click();
-                    });
-                }
-            }
-        };
+    function initVerification() {
+        if (!code) {
+            resultEl.innerHTML = "❌ Không tìm thấy mã QR trong liên kết.";
+            resultEl.className = "status fail";
+        } else {
+            grecaptcha.ready(() => {
+                document.querySelector(".g-recaptcha").click();
+            });
+        }
+    }
 
-        function onReCaptchaSuccess(token) {
-            if (!token) {
-                resultEl.innerHTML = "❌ Lỗi xác thực reCAPTCHA.";
+    function onReCaptchaSuccess(token) {
+        if (!token) {
+            resultEl.innerHTML = "❌ Lỗi xác thực reCAPTCHA.";
+            resultEl.className = "status fail";
+            return;
+        }
+
+        fetch("https://uviqesqguuekioeqoxpj.supabase.co/functions/v1/verify-auth", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                qrcode: code,
+                location: "auth.quetmaqr.com",
+                user_agent: navigator.userAgent,
+                recaptcha_token: token
+            })
+        })
+        .then(async res => {
+            const data = await res.json();
+            if (!res.ok) {
+                resultEl.innerHTML = `⚠️ Lỗi: ${data.error || "Không rõ nguyên nhân."}`;
                 resultEl.className = "status fail";
                 return;
             }
 
-            fetch("https://uviqesqguuekioeqoxpj.supabase.co/functions/v1/verify-auth", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    qrcode: code,
-                    location: "auth.quetmaqr.com",
-                    user_agent: navigator.userAgent,
-                    recaptcha_token: token
-                })
-            })
-            .then(async res => {
-                const data = await res.json();
-                if (!res.ok) {
-                    resultEl.innerHTML = `⚠️ Lỗi: ${data.error || "Không rõ nguyên nhân."}`;
-                    resultEl.className = "status fail";
-                    return;
-                }
+            const item = data.data;
+            const scanCount = item.scan;
+            const isFirstScan = !item.scanned_at || (scanCount === 1);
 
-                const item = data.data;
-                const scanCount = item.scan;
-                const isFirstScan = !item.scanned_at || (scanCount === 1);
+            resultEl.innerHTML = isFirstScan
+                ? "✅ Sản phẩm chính hãng. Tem được quét lần đầu."
+                : "⚠️ Mã đã từng được xác minh trước đó.";
+            resultEl.className = isFirstScan ? "status ok" : "status warn";
 
-                resultEl.innerHTML = isFirstScan
-                    ? "✅ Sản phẩm chính hãng. Tem được quét lần đầu."
-                    : "⚠️ Mã đã từng được xác minh trước đó.";
-                resultEl.className = isFirstScan ? "status ok" : "status warn";
+            infoEl.innerHTML = `
+               <p>Tên sản phẩm: <b>${item.Product_name || "Không rõ"}</b></p>
+               <p>Số lô: <b>${item.lot_no || "Không rõ"}</b></p>
+               <p>Số lần quét: <b>${scanCount}</b></p>
+               <p>Lần quét đầu tiên: <b>${formatToVietnamTime(item.scanned_at)}</b></p>
+               <p>Lần quét gần nhất: <b>${formatToVietnamTime(item.last_scanned_at)}</b></p>
+            `;
+        })
+        .catch(() => {
+            resultEl.innerHTML = "⚠️ Lỗi kết nối: không thể truy cập hệ thống.";
+            resultEl.className = "status fail";
+        });
+    }
 
-                infoEl.innerHTML = `
-                    <p>Tên sản phẩm: <b>${item.Product_name || "Không rõ"}</b></p>
-                    <p>Số lô: <b>${item.lot_no || "Không rõ"}</b></p>
-                    <p>Số lần quét: <b>${scanCount}</b></p>
-                    <p>Lần quét đầu tiên: <b>${item.scanned_at ? new Date(item.scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
-                    <p>Lần quét gần nhất: <b>${item.last_scanned_at ? new Date(item.last_scanned_at).toLocaleString("vi-VN") : 'Vừa xong'}</b></p>
-                `;
-            })
-            .catch(() => {
-                resultEl.innerHTML = "⚠️ Lỗi kết nối: không thể truy cập hệ thống.";
-                resultEl.className = "status fail";
-            });
-        }
-    </script>
+    // Đảm bảo reCAPTCHA được gọi sau khi trang đã tải xong
+    window.onload = initVerification;
+  </script>
 
 </body>
 </html>
